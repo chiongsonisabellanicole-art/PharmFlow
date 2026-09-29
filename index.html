@@ -17,7 +17,14 @@
 }
 :root[data-theme="dark"]{--bg:#0D1E22;--card:#142B30;--ink:#E7F3F3;--sub:#8FB0B2;--line:#20393C;--urgent-bg:#3A1E1E;--stripe:rgba(255,255,255,.025);}
 *{box-sizing:border-box;}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;padding:22px;}
+body{margin:0;background:
+  radial-gradient(circle at 12% 18%, rgba(46,134,222,.13), transparent 38%),
+  radial-gradient(circle at 88% 10%, rgba(18,164,84,.11), transparent 36%),
+  radial-gradient(circle at 80% 82%, rgba(224,142,29,.11), transparent 42%),
+  radial-gradient(circle at 15% 85%, rgba(14,156,142,.16), transparent 42%),
+  radial-gradient(circle at 50% 50%, rgba(108,92,231,.06), transparent 60%),
+  var(--bg);
+  background-attachment:fixed;color:var(--ink);font-family:'Inter',system-ui,sans-serif;padding:22px;}
 .wrap{max-width:1180px;margin:0 auto;}
 .appbar{background:linear-gradient(120deg,var(--navy),var(--teal-d));color:#fff;border-radius:18px;padding:22px 26px;margin-bottom:22px;box-shadow:0 8px 20px rgba(11,79,108,.22);}
 .appbar h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin:0 0 5px;letter-spacing:.01em;}
@@ -56,6 +63,8 @@ tbody tr:hover{background:color-mix(in srgb, var(--teal) 6%, transparent);}
 .note-link .tip{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--navy-d);color:#fff;padding:12px 14px;border-radius:10px;font-size:.82rem;width:250px;white-space:pre-line;z-index:15;line-height:1.6;box-shadow:0 10px 24px rgba(0,0,0,.25);text-align:left;font-weight:400;}
 .note-link:hover .tip{display:block;}
 .hover-info{position:relative;cursor:default;border-bottom:1px dotted var(--sub);}
+.task-link{color:var(--teal-d);text-decoration:none;font-weight:600;border-bottom:1px solid var(--teal-d);cursor:pointer;}
+.task-link:hover{color:var(--navy);}
 .hover-info .tip{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--navy-d);color:#fff;padding:13px 15px;border-radius:10px;font-size:.82rem;width:270px;white-space:pre-line;z-index:15;line-height:1.65;box-shadow:0 10px 24px rgba(0,0,0,.25);}
 .hover-info:hover .tip{display:block;}
 @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(224,69,60,.55);}50%{box-shadow:0 0 0 10px rgba(224,69,60,0);}}
@@ -146,6 +155,7 @@ textarea{min-height:70px;}
   <div id="newPharmWrap" style="display:none"><label>New pharmacy name</label><input id="tNewPharm" placeholder="e.g. MedPlus Alabang"></div>
   <label>Task</label><input id="tName">
   <label>Due date (Manila time)</label><input type="datetime-local" id="tDue">
+  <label>CRM link (optional)</label><input id="tLink" placeholder="https://monday.com/...">
   <label>Notes (one per line = bullet)</label><textarea id="tNotes"></textarea>
   <div class="chk"><input type="checkbox" id="tUrgent"><label style="margin:0">Mark urgent</label></div>
   <div class="modal-actions">
@@ -211,8 +221,12 @@ function save(){try{localStorage.setItem('pharmTaskState',JSON.stringify(state))
 function uid(){return state.nextId++;}
 function resetAll(){state={pharmacies:{},things:[],nextId:1};save();render();}
 
-const PALETTE=['#0F9B8E','#6C5CE7','#E08E1D','#2E86DE','#D6336C','#12A454'];
+const PALETTE=['#0F9B8E','#6C5CE7','#E08E1D','#2E86DE','#D6336C','#12A454','#9C6B1F','#5B5FC7','#C2410C','#0891B2','#BE185D','#4D7C0F','#7C3AED','#B45309'];
 function colorFor(name){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length];}
+function assignPharmColors(){
+  const ids=Object.keys(state.pharmacies);
+  ids.forEach((pid,i)=>{state.pharmacies[pid].color=PALETTE[i%PALETTE.length];});
+}
 
 function mnlToET(iso){
   if(!iso)return '—';
@@ -237,6 +251,7 @@ function taskInfoTip(task){
 function notesToTip(notes){if(!notes)return '';return notes.split('\n').filter(x=>x.trim()).map(x=>'• '+x).join('\n');}
 
 function render(){
+  assignPharmColors();
   renderDash();renderThings();renderToday();renderPharmacies();fillPharmSelect();save();
 }
 function renderDash(){
@@ -287,14 +302,14 @@ function renderPharmacies(){
     const sorted=[...p.tasks].sort((a,b)=>(a.done===b.done)?0:(a.done?1:-1));
     const rows=sorted.length?sorted.map(task=>`
       <tr class="${task.urgent&&!task.done?'urgent':''} ${task.done?'done':''}">
-        <td class="task-name"><span class="hover-info">${esc(task.name)}<span class="tip">${esc(taskInfoTip(task))}</span></span></td>
+        <td class="task-name">${task.link?`<a class="hover-info task-link" href="${esc(task.link)}" target="_blank" rel="noopener">${esc(task.name)} 🔗<span class="tip">${esc(taskInfoTip(task))}</span></a>`:`<span class="hover-info">${esc(task.name)}<span class="tip">${esc(taskInfoTip(task))}</span></span>`}</td>
         <td>${mnlToET(task.due)}</td>
         <td>${task.notes?`<span class="note-link">View note<span class="tip">${esc(notesToTip(task.notes))}</span></span>`:'—'}</td>
         <td><input type="checkbox" ${task.done?'checked':''} onchange="onDoneToggle('${pid}',${task.id},this)"></td>
         <td class="actions"><button class="icon-btn" title="Edit" onclick="openTask('${pid}',${task.id})">✏️</button><button class="icon-btn danger" title="Delete" onclick="askDelete('task','${pid}:${task.id}')">🗑️</button></td>
       </tr>`).join(''):'<tr><td colspan="5" class="empty">No tasks</td></tr>';
     return `<div class="pharm">
-      <div class="pharm-head" style="background:${colorFor(p.name)}">
+      <div class="pharm-head" style="background:${p.color}">
         <span>💊 ${esc(p.name)}</span>
         <span><button class="icon-btn" title="Rename" onclick="renamePharmacy('${pid}')">✏️</button><button class="icon-btn danger" title="Delete pharmacy" onclick="askDelete('pharmacy','${pid}')">🗑️</button></span>
       </div>
@@ -367,10 +382,12 @@ function openTask(pid,tid){
     document.getElementById('tPharm').value=pid;
     document.getElementById('tName').value=task.name;
     document.getElementById('tDue').value=task.due||'';
+    document.getElementById('tLink').value=task.link||'';
     document.getElementById('tNotes').value=task.notes||'';
     document.getElementById('tUrgent').checked=task.urgent;
   } else {
     document.getElementById('tName').value='';document.getElementById('tDue').value='';
+    document.getElementById('tLink').value='';
     document.getElementById('tNotes').value='';document.getElementById('tUrgent').checked=false;
   }
   toggleNewPharm();
@@ -387,13 +404,14 @@ function saveTask(){
     state.pharmacies[pid]={name:newName,tasks:[]};
   }
   const due=document.getElementById('tDue').value;
+  const link=document.getElementById('tLink').value.trim();
   const notes=document.getElementById('tNotes').value;
   const urgent=document.getElementById('tUrgent').checked;
   if(editingTask){
     const task=state.pharmacies[editingTask.pid].tasks.find(t=>t.id===editingTask.tid);
-    task.name=name;task.due=due;task.notes=notes;task.urgent=urgent;
+    task.name=name;task.due=due;task.link=link;task.notes=notes;task.urgent=urgent;
   } else {
-    state.pharmacies[pid].tasks.push({id:uid(),name,due,notes,urgent,done:false,createdAt:new Date().toISOString(),completedAt:null});
+    state.pharmacies[pid].tasks.push({id:uid(),name,due,link,notes,urgent,done:false,createdAt:new Date().toISOString(),completedAt:null});
   }
   closeModal('taskModalBg');render();
 }
