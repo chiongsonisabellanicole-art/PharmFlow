@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pharmflow</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF4F6; --card:#FFFFFF; --ink:#122C33; --sub:#5D7B84;
+  --teal:#0E9C8E; --teal-d:#0B7A70; --navy:#0B4F6C; --navy-d:#083A50;
+  --line:#DCE8EA; --urgent:#E0453C; --urgent-bg:#FDEAE9; --stripe:rgba(11,79,108,.03);
+  padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#0D1E22;--card:#142B30;--ink:#E7F3F3;--sub:#8FB0B2;--line:#20393C;--urgent-bg:#3A1E1E;--stripe:rgba(255,255,255,.025);}
+}
+:root[data-theme="dark"]{--bg:#0D1E22;--card:#142B30;--ink:#E7F3F3;--sub:#8FB0B2;--line:#20393C;--urgent-bg:#3A1E1E;--stripe:rgba(255,255,255,.025);}
+*{box-sizing:border-box;}
+body{margin:0;background:
+  radial-gradient(circle at 12% 18%, rgba(46,134,222,.13), transparent 38%),
+  radial-gradient(circle at 88% 10%, rgba(18,164,84,.11), transparent 36%),
+  radial-gradient(circle at 80% 82%, rgba(224,142,29,.11), transparent 42%),
+  radial-gradient(circle at 15% 85%, rgba(14,156,142,.16), transparent 42%),
+  radial-gradient(circle at 50% 50%, rgba(108,92,231,.06), transparent 60%),
+  var(--bg);
+  background-attachment:fixed;color:var(--ink);font-family:'Inter',system-ui,sans-serif;padding:22px;}
+.wrap{max-width:1180px;margin:0 auto;}
+.appbar{background:linear-gradient(120deg,var(--navy),var(--teal-d));color:#fff;border-radius:18px;padding:22px 26px;margin-bottom:22px;box-shadow:0 8px 20px rgba(11,79,108,.22);}
+.appbar h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin:0 0 5px;letter-spacing:.01em;}
+.appbar .sub{color:rgba(255,255,255,.85);font-size:.88rem;margin:0;}
+.topgrid{display:grid;grid-template-columns:2.1fr 1fr;gap:18px;margin-bottom:20px;}
+@media(max-width:760px){.topgrid{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 2px 10px rgba(11,79,108,.05);}
+.dash{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+@media(max-width:640px){.dash{grid-template-columns:repeat(2,1fr);}}
+.stat{border-radius:13px;padding:16px 12px;text-align:center;color:#fff;position:relative;cursor:default;}
+.stat-panel{display:none;position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--card);border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.28);z-index:30;width:230px;max-height:240px;overflow:auto;text-align:left;padding:6px;}
+.stat:hover .stat-panel{display:block;}
+.stat-panel-item{padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--ink);}
+.stat-panel-item:hover{background:var(--bg);}
+.stat-panel-item b{font-size:.82rem;font-weight:600;}
+.stat-panel-empty{padding:8px 10px;color:var(--sub);font-size:.8rem;}
+.stat .ic{font-size:1.2rem;display:block;margin-bottom:4px;}
+.stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.7rem;line-height:1.2;}
+.stat span{font-size:.72rem;opacity:.92;letter-spacing:.02em;}
+h2{font-family:'Space Grotesk',sans-serif;font-size:1.08rem;margin:0 0 12px;color:var(--navy-d);}
+@media (prefers-color-scheme:dark){h2{color:var(--ink);}}
+:root[data-theme="dark"] h2{color:var(--ink);}
+table{width:100%;border-collapse:collapse;table-layout:fixed;}
+th,td{padding:11px 12px;text-align:left;font-size:.88rem;border-bottom:1px solid var(--line);word-wrap:break-word;}
+th{color:var(--sub);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+tbody tr:nth-child(even){background:var(--stripe);}
+tbody tr:hover{background:color-mix(in srgb, var(--teal) 6%, transparent);}
+.today-row{cursor:pointer;}
+@keyframes flashRow{0%{background:rgba(14,156,142,.4);}100%{background:transparent;}}
+.flash-highlight td{animation:flashRow 1.5s ease;}
+.hist-row.flash-highlight{animation:flashRow 1.5s ease;}
+.pharm{margin-bottom:20px;border-radius:16px;border:1px solid var(--line);box-shadow:0 2px 10px rgba(11,79,108,.05);}
+.pharm-head{padding:15px 20px;color:#fff;display:flex;justify-content:space-between;align-items:center;font-family:'Space Grotesk',sans-serif;font-size:1.05rem;border-radius:16px 16px 0 0;}
+.pharm-body{background:var(--card);padding:6px 20px 18px;border-radius:0 0 16px 16px;}
+.done{opacity:.5;text-decoration:line-through;}
+.urgent{background:var(--urgent-bg)!important;}
+.urgent .task-name::before{content:"⚠ ";color:var(--urgent);}
+.actions{white-space:nowrap;}
+.icon-btn{background:var(--bg);border:1px solid var(--line);border-radius:8px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:.88rem;margin-right:6px;transition:transform .12s ease,background .15s ease,border-color .15s ease;line-height:1;}
+.icon-btn:last-child{margin-right:0;}
+.icon-btn:hover{transform:translateY(-1px);border-color:var(--teal);background:color-mix(in srgb, var(--teal) 15%, var(--bg));}
+.icon-btn.danger:hover{border-color:var(--urgent);background:color-mix(in srgb, var(--urgent) 15%, var(--bg));}
+.pharm-head .icon-btn{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4);color:#fff;}
+.pharm-head .icon-btn:hover{background:rgba(255,255,255,.35);}
+.note-link{color:var(--teal-d);cursor:pointer;font-weight:600;position:relative;white-space:nowrap;}
+.note-link .tip{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--navy-d);color:#fff;padding:12px 14px;border-radius:10px;font-size:.82rem;width:250px;white-space:pre-line;z-index:15;line-height:1.6;box-shadow:0 10px 24px rgba(0,0,0,.25);text-align:left;font-weight:400;}
+.note-link:hover .tip{display:block;}
+.hover-info{position:relative;cursor:default;border-bottom:1px dotted var(--sub);}
+.task-link{color:var(--teal-d);text-decoration:none;font-weight:600;border-bottom:1px solid var(--teal-d);cursor:pointer;}
+.task-link:hover{color:var(--navy);}
+.hover-info .tip{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--navy-d);color:#fff;padding:13px 15px;border-radius:10px;font-size:.82rem;width:270px;white-space:pre-line;z-index:15;line-height:1.65;box-shadow:0 10px 24px rgba(0,0,0,.25);}
+.hover-info:hover .tip{display:block;}
+@keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(224,69,60,.55);}50%{box-shadow:0 0 0 10px rgba(224,69,60,0);}}
+.modal.alert-modal{border:3px solid var(--urgent);animation:pulseBorder 1.4s infinite;}
+.hist-row{padding:14px 16px;margin-bottom:10px;border-radius:12px;border-left:5px solid var(--teal);background:color-mix(in srgb, var(--teal) 7%, var(--card));}
+.hist-row:last-child{margin-bottom:0;}
+.hname{font-weight:600;cursor:default;display:inline-block;border-bottom:1px dotted var(--sub);}
+.hist-badge{display:inline-block;background:#12A454;color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.02em;padding:3px 9px;border-radius:20px;margin-top:6px;}
+button.primary{background:var(--teal);color:#fff;border:none;border-radius:10px;padding:11px 18px;font-weight:600;cursor:pointer;font-size:.9rem;}
+button.ghost{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:.86rem;color:var(--ink);font-weight:500;}
+.toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.modal-bg{position:fixed;inset:0;background:rgba(6,25,30,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:16px;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--card);border-radius:18px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+.modal.danger{border-top:6px solid var(--urgent);}
+.modal h3{font-family:'Space Grotesk',sans-serif;margin:0 0 14px;}
+label{display:block;font-size:.8rem;color:var(--sub);margin:12px 0 5px;font-weight:600;}
+input,select,textarea{width:100%;padding:10px 11px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-family:inherit;font-size:.9rem;}
+textarea{min-height:70px;}
+.chk{display:flex;align-items:center;gap:8px;margin-top:12px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+.empty{color:var(--sub);font-size:.85rem;padding:10px 0;}
+.dd{position:relative;}
+.dd-btn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-family:inherit;font-size:.9rem;cursor:pointer;text-align:left;}
+.dd-btn:hover{border-color:var(--sub);}
+.dd-caret{color:var(--sub);transition:transform .15s;}
+.dd.open .dd-caret{transform:rotate(180deg);}
+.dd-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:40;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 28px rgba(0,0,0,.22);padding:10px;}
+.dd.open .dd-panel{display:block;}
+.dd-list{max-height:260px;overflow-y:auto;margin:8px 0;}
+.dd-row{display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:8px;cursor:pointer;font-size:.88rem;margin:0;color:var(--ink);font-weight:500;}
+.dd-row:hover{background:var(--bg);}
+.dd-row input{width:auto;margin:0;accent-color:var(--teal);}
+.dd-dot{width:10px;height:10px;border-radius:50%;flex:none;}
+.dd-foot{display:flex;justify-content:space-between;gap:8px;}
+.sel-chip{display:inline-flex;align-items:center;gap:6px;color:#fff;border-radius:20px;padding:4px 6px 4px 12px;font-size:.78rem;font-weight:600;}
+.sel-chip button{background:rgba(255,255,255,.25);border:none;color:#fff;border-radius:50%;width:18px;height:18px;line-height:16px;cursor:pointer;padding:0;font-size:.8rem;}
+.filter-chip{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:.82rem;cursor:pointer;color:var(--ink);transition:all .15s;font-weight:500;}
+.filter-chip:hover{transform:translateY(-1px);}
+.filter-chip.active{color:#fff;font-weight:700;border-color:transparent;}
+</style>
+</head>
+<body><div class="wrap">
+<div class="appbar">
+  <h1><span style="font-size:1.3rem;margin-right:8px">✚</span>Pharmflow</h1>
+  <p class="sub">Every pharmacy, every task, every deadline — one calm place to keep it all straight.</p>
+</div>
+
+<div class="topgrid">
+  <div class="card">
+    <h2>Dashboard <span id="dashBadge" style="font-weight:500;font-size:.78rem;color:var(--sub)"></span></h2>
+    <div class="dash" id="dash"></div>
+  </div>
+  <div class="card">
+    <h2 style="display:flex;justify-content:space-between;align-items:center">Things <button class="ghost" style="padding:5px 10px;font-size:.75rem" onclick="openHistory()">History</button></h2>
+    <table><thead><tr><th>Task</th><th style="width:100px">Manage</th></tr></thead><tbody id="thingsBody"></tbody></table>
+    <button class="ghost" style="margin-top:8px;width:100%" onclick="openThing()">+ Add random task</button>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px;">
+  <h2>Today's Work <span id="todayBadge" style="font-weight:500;font-size:.78rem;color:var(--sub)"></span></h2>
+  <table><thead><tr><th style="width:90px">Time</th><th style="width:130px">Pharmacy</th><th>Task</th></tr></thead><tbody id="todayBody"></tbody></table>
+</div>
+
+<div class="card" style="margin-bottom:18px;">
+  <h2>🔍 Filter Pharmacies</h2>
+  <div class="dd" id="pharmDD">
+    <button type="button" class="dd-btn" id="ddBtn" onclick="toggleDD(event)" aria-haspopup="listbox" aria-expanded="false">
+      <span id="ddLabel">All pharmacies</span><span class="dd-caret">▾</span>
+    </button>
+    <div class="dd-panel" id="ddPanel">
+      <input id="pharmSearch" placeholder="Search pharmacy name..." oninput="renderPharmFilterList()" autocomplete="off">
+      <div id="pharmFilterList" class="dd-list"></div>
+      <div class="dd-foot">
+        <button type="button" class="ghost" onclick="clearPharmFilter()">Clear</button>
+        <button type="button" class="primary" style="padding:8px 16px" onclick="closeDD()">Done</button>
+      </div>
+    </div>
+  </div>
+  <div id="selChips" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+  <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <span id="filterStatus" style="font-size:.8rem;color:var(--sub)"></span>
+    <span style="display:flex;gap:8px;">
+      <button class="ghost" onclick="openAddPharmacy()">+ Add pharmacy</button>
+      <button class="ghost" onclick="clearPharmFilter()">Show all</button>
+    </span>
+  </div>
+</div>
+
+<!-- Add Pharmacy only -->
+<div class="modal-bg" id="addPharmModalBg"><div class="modal">
+  <h3>Add Pharmacy</h3>
+  <label>Pharmacy name</label>
+  <input id="addPharmName" placeholder="e.g. MedPlus Alabang">
+  <div class="modal-actions">
+    <button class="ghost" onclick="closeModal('addPharmModalBg')">Cancel</button>
+    <button class="primary" onclick="saveAddPharmacy()">Add pharmacy</button>
+  </div>
+</div></div>
+
+<div class="toolbar">
+  <button class="primary" onclick="openTask()">+ Add task</button>
+  <button class="ghost" onclick="exportData()">Save backup</button>
+  <button class="ghost" onclick="document.getElementById('importFile').click()">Restore backup</button>
+  <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(this)">
+  <button class="ghost" onclick="document.getElementById('resetModalBg').classList.add('show')">Reset all data</button>
+</div>
+
+<div id="pharmList"></div>
+
+<!-- Reset Confirm -->
+<div class="modal-bg" id="resetModalBg"><div class="modal danger">
+  <h3>⚠ Reset everything?</h3>
+  <p style="color:var(--sub)">This permanently deletes every pharmacy, every task, your Things list, and your history. This can't be undone.</p>
+  <div class="modal-actions">
+    <button class="ghost" onclick="closeModal('resetModalBg')">Cancel</button>
+    <button class="primary" style="background:var(--urgent)" onclick="closeModal('resetModalBg');resetAll()">Yes, reset everything</button>
+  </div>
+</div></div>
+
+<!-- Rename Pharmacy -->
+<div class="modal-bg" id="renameModalBg"><div class="modal">
+  <h3>Rename pharmacy</h3>
+  <label>Pharmacy name</label>
+  <input id="renameInput">
+  <div class="modal-actions">
+    <button class="ghost" onclick="closeModal('renameModalBg')">Cancel</button>
+    <button class="primary" onclick="saveRename()">Save</button>
+  </div>
+</div></div>
+
+<!-- Notice -->
+<div class="modal-bg" id="noticeModalBg"><div class="modal">
+  <h3 id="noticeTitle">Heads up</h3>
+  <p id="noticeMsg" style="color:var(--sub)"></p>
+  <div class="modal-actions"><button class="primary" onclick="closeModal('noticeModalBg')">OK</button></div>
+</div></div>
+
+<!-- Task Modal -->
+<div class="modal-bg" id="taskModalBg"><div class="modal">
+  <h3 id="taskModalTitle">Add Task</h3>
+  <label>Pharmacy</label>
+  <select id="tPharm" onchange="toggleNewPharm()"></select>
+  <div id="newPharmWrap" style="display:none"><label>New pharmacy name</label><input id="tNewPharm" placeholder="e.g. MedPlus Alabang"></div>
+  <label>Task</label><input id="tName">
+  <label>Due date (Manila time)</label><input type="datetime-local" id="tDue">
+  <label>CRM link (optional)</label><input id="tLink" placeholder="https://monday.com/...">
+  <label>Notes (one per line = bullet)</label><textarea id="tNotes"></textarea>
+  <div class="chk"><input type="checkbox" id="tUrgent"><label style="margin:0">Mark urgent</label></div>
+  <div class="modal-actions">
+    <button class="ghost" onclick="closeModal('taskModalBg')">Cancel</button>
+    <button class="primary" onclick="saveTask()">Save task</button>
+  </div>
+</div></div>
+
+<!-- Thing Modal -->
+<div class="modal-bg" id="thingModalBg"><div class="modal">
+  <h3 id="thingModalTitle">Add Random Task</h3>
+  <label>Task</label><input id="thName">
+  <label>Due date/time (optional)</label><input type="datetime-local" id="thDue">
+  <label>Notes</label><textarea id="thNotes"></textarea>
+  <div class="modal-actions">
+    <button class="ghost" onclick="closeModal('thingModalBg')">Cancel</button>
+    <button class="primary" onclick="saveThing()">Save</button>
+  </div>
+</div></div>
+
+<div id="globalTip" style="display:none;position:fixed;z-index:50;background:var(--navy-d);color:#fff;padding:13px 15px;border-radius:10px;font-size:.82rem;width:260px;white-space:pre-line;line-height:1.65;box-shadow:0 10px 24px rgba(0,0,0,.3);pointer-events:none;"></div>
+
+<!-- History Modal -->
+<div class="modal-bg" id="historyModalBg"><div class="modal">
+  <h3 style="color:var(--teal-d)">🗂 Things — History</h3>
+  <div id="historyList" style="max-height:50vh;overflow:auto;margin-top:4px"></div>
+  <div class="modal-actions"><button class="ghost" onclick="closeModal('historyModalBg')">Close</button></div>
+</div></div>
+
+<!-- Monday CRM confirm -->
+<div class="modal-bg" id="mondayModalBg"><div class="modal">
+  <h3>📋 Notes on Monday?</h3>
+  <p style="color:var(--sub)">Before this task is marked done — have you already left your notes for it on our CRM (Monday)?</p>
+  <div class="modal-actions">
+    <button class="ghost" onclick="resolveMonday('not_needed')">Not needed</button>
+    <button class="primary" onclick="resolveMonday('yes')">Yes, I left notes</button>
+  </div>
+</div></div>
+
+<!-- Reminder Alert -->
+<div class="modal-bg" id="alertModalBg"><div class="modal alert-modal">
+  <h3 style="color:var(--urgent)">🚨 Task reminder</h3>
+  <div id="alertList" style="max-height:50vh;overflow:auto"></div>
+  <div class="modal-actions"><button class="primary" style="background:var(--urgent)" onclick="closeModal('alertModalBg')">Got it</button></div>
+</div></div>
+
+<!-- Confirm Delete -->
+<div class="modal-bg" id="delModalBg"><div class="modal danger">
+  <h3>⚠ Confirm delete</h3>
+  <p id="delMsg" style="color:var(--sub)"></p>
+  <div class="modal-actions">
+    <button class="ghost" onclick="closeModal('delModalBg')">Cancel</button>
+    <button class="primary" style="background:var(--urgent)" onclick="confirmDelete()">Delete</button>
+  </div>
+</div></div>
+
+<script>
+let state = {pharmacies:{}, things:[], nextId:1};
+let activeFilter=new Set();
+function renderPharmFilterList(){
+  const q=(document.getElementById('pharmSearch').value||'').toLowerCase();
+  const ids=Object.keys(state.pharmacies).filter(pid=>state.pharmacies[pid].name.toLowerCase().includes(q));
+  const wrap=document.getElementById('pharmFilterList');
+  wrap.innerHTML = ids.length ? ids.map(pid=>{
+    const p=state.pharmacies[pid];
+    return `<label class="dd-row"><input type="checkbox" ${activeFilter.has(pid)?'checked':''} onchange="togglePharmFilter('${pid}')"><span class="dd-dot" style="background:${p.color||'var(--teal)'}"></span>${esc(p.name)}</label>`;
+  }).join('') : '<span class="empty">No pharmacies match your search.</span>';
+  updateFilterStatus();
+}
+function toggleDD(e){
+  if(e)e.stopPropagation();
+  const dd=document.getElementById('pharmDD');
+  const open=dd.classList.toggle('open');
+  document.getElementById('ddBtn').setAttribute('aria-expanded',open);
+  if(open){const i=document.getElementById('pharmSearch');if(i)i.focus();}
+}
+function closeDD(){
+  const dd=document.getElementById('pharmDD');
+  dd.classList.remove('open');
+  document.getElementById('ddBtn').setAttribute('aria-expanded',false);
+}
+document.addEventListener('click',e=>{const dd=document.getElementById('pharmDD');if(dd&&!dd.contains(e.target))closeDD();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDD();});
+function togglePharmFilter(pid){
+  if(activeFilter.has(pid))activeFilter.delete(pid);else activeFilter.add(pid);
+  renderPharmFilterList();renderDash();renderToday();renderPharmacies();
+}
+function clearPharmFilter(){
+  activeFilter.clear();
+  document.getElementById('pharmSearch').value='';
+  renderPharmFilterList();renderDash();renderToday();renderPharmacies();
+}
+function updateFilterStatus(){
+  const el=document.getElementById('filterStatus');
+  const badgeD=document.getElementById('dashBadge');
+  const badgeT=document.getElementById('todayBadge');
+  const lbl=document.getElementById('ddLabel'),chips=document.getElementById('selChips');
+  [...activeFilter].forEach(pid=>{if(!state.pharmacies[pid])activeFilter.delete(pid);});
+  if(lbl)lbl.textContent=activeFilter.size?`${activeFilter.size} selected`:'All pharmacies';
+  if(chips)chips.innerHTML=[...activeFilter].map(pid=>{const p=state.pharmacies[pid];return `<span class="sel-chip" style="background:${p.color||'var(--teal)'}">${esc(p.name)}<button type="button" onclick="togglePharmFilter('${pid}')" aria-label="Remove">×</button></span>`;}).join('');
+  if(!activeFilter.size){
+    el.textContent='Showing all pharmacies';
+    if(badgeD)badgeD.textContent='';if(badgeT)badgeT.textContent='';
+  } else {
+    const names=[...activeFilter].map(pid=>state.pharmacies[pid]?.name).filter(Boolean);
+    el.textContent=`Showing: ${names.join(', ')}`;
+    const tag=`— filtered (${names.length})`;
+    if(badgeD)badgeD.textContent=tag;if(badgeT)badgeT.textContent=tag;
+  }
+}
+function openAddPharmacy(){
+  document.getElementById('addPharmName').value='';
+  document.getElementById('addPharmModalBg').classList.add('show');
+}
+function saveAddPharmacy(){
+  const name=document.getElementById('addPharmName').value.trim();
+  if(!name)return notice('Please enter a pharmacy name.');
+  const pid='p'+uid();
+  state.pharmacies[pid]={name,tasks:[]};
+  closeModal('addPharmModalBg');
+  render();
+}
+function load(){
+  try{const s=localStorage.getItem('pharmTaskState');if(s)state=JSON.parse(s);}catch(e){}
+}
+function save(){try{localStorage.setItem('pharmTaskState',JSON.stringify(state));}catch(e){}}
+function uid(){return state.nextId++;}
+function resetAll(){state={pharmacies:{},things:[],nextId:1};save();render();}
+
+const PALETTE=['#0F9B8E','#6C5CE7','#E08E1D','#2E86DE','#D6336C','#12A454','#9C6B1F','#5B5FC7','#C2410C','#0891B2','#BE185D','#4D7C0F','#7C3AED','#B45309'];
+function colorFor(name){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length];}
+function assignPharmColors(){
+  const ids=Object.keys(state.pharmacies);
+  ids.forEach((pid,i)=>{state.pharmacies[pid].color=PALETTE[i%PALETTE.length];});
+}
+
+function mnlToET(iso){
+  if(!iso)return '—';
+  const d=new Date(iso);
+  return d.toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+function nowET(){return new Date().toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'});}
+function todayMNL(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'});}
+function dueDateMNL(iso){if(!iso)return null; return new Date(iso).toLocaleDateString('en-CA',{timeZone:'Asia/Manila'});}
+
+function fmtBoth(iso){
+  if(!iso)return '—';
+  const d=new Date(iso);
+  const mnl=d.toLocaleString('en-US',{timeZone:'Asia/Manila',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  const et=d.toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  return `MNL ${mnl}\nET ${et}`;
+}
+function taskInfoTip(task){
+  const mondayTxt = !task.done?'Not completed yet':(task.mondayNote==='yes'?'Left ✓':task.mondayNote==='not_needed'?'Not needed':'—');
+  return `ADDED\n${fmtBoth(task.createdAt)}\n\nCOMPLETED\n${task.done?fmtBoth(task.completedAt):'Not yet'}\n\nMONDAY CRM NOTE\n${mondayTxt}`;
+}
+function notesToTip(notes){if(!notes)return '';return notes.split('\n').filter(x=>x.trim()).map(x=>'• '+x).join('\n');}
+
+function render(){
+  assignPharmColors();
+  renderDash();renderThings();renderToday();renderPharmacies();fillPharmSelect();renderPharmFilterList();save();
+}
+function panelHTML(list){
+  if(!list.length)return '<div class="stat-panel-empty">Nothing here</div>';
+  return list.map(it=>{
+    const onclick = it.type==='pharm' ? `goToTask('${it.pid}',${it.tid})` : `jumpToHistory(${it.tid})`;
+    return `<div class="stat-panel-item" onclick="${onclick}"><b>${esc(it.label)}</b><br><span style="color:var(--sub);font-size:.72rem">${esc(it.sub||'')}</span></div>`;
+  }).join('');
+}
+function buildDashData(){
+  const t=todayMNL();
+  const todayList=[],activeList=[],completedTodayList=[],totalList=[],allCompletedList=[];
+  const ids=activeFilter.size?[...activeFilter]:Object.keys(state.pharmacies);
+  for(const pid of ids){
+    const p=state.pharmacies[pid];if(!p)continue;
+    for(const task of p.tasks){
+      const item={type:'pharm',pid,tid:task.id,label:task.name,sub:p.name};
+      totalList.push(item);
+      if(!task.done){
+        activeList.push(item);
+        if(dueDateMNL(task.due)===t)todayList.push(item);
+      } else {
+        if(task.completedAt && dueDateMNL(task.completedAt)===t)completedTodayList.push(item);
+        allCompletedList.push({...item,when:task.completedAt});
+      }
+    }
+  }
+  (state.thingsHistory||[]).forEach(h=>{
+    allCompletedList.push({type:'thing-history',tid:h.id,label:h.name,sub:'Random task',when:h.completedAt});
+  });
+  allCompletedList.sort((a,b)=>new Date(b.when||0)-new Date(a.when||0));
+  return {todayList,activeList,completedTodayList,totalList,allCompletedList};
+}
+function renderDash(){
+  const d=buildDashData();
+  document.getElementById('dash').innerHTML=`
+    <div class="stat" style="background:#2E86DE"><span class="ic">📅</span><b>${d.todayList.length}</b><span>Today</span><div class="stat-panel">${panelHTML(d.todayList)}</div></div>
+    <div class="stat" style="background:#E08E1D"><span class="ic">⏳</span><b>${d.activeList.length}</b><span>Active</span><div class="stat-panel">${panelHTML(d.activeList)}</div></div>
+    <div class="stat" style="background:#12A454"><span class="ic">✅</span><b>${d.completedTodayList.length}</b><span>Completed today</span><div class="stat-panel">${panelHTML(d.completedTodayList)}</div></div>
+    <div class="stat" style="background:var(--navy)"><span class="ic">📋</span><b>${d.totalList.length}</b><span>Total tasks</span><div class="stat-panel">${panelHTML(d.totalList)}</div></div>
+    <div class="stat" style="background:#6C5CE7"><span class="ic">🏁</span><b>${d.allCompletedList.length}</b><span>Completed (all time)</span><div class="stat-panel">${panelHTML(d.allCompletedList)}</div></div>`;
+}
+function thingInfoTip(t){
+  return `ADDED\n${fmtBoth(t.createdAt)}\n\nDUE\n${t.due?fmtBoth(t.due):'—'}\n\nNOTES\n${notesToTip(t.notes)||'None'}`;
+}
+function renderThings(){
+  const body=document.getElementById('thingsBody');
+  if(!state.things.length){body.innerHTML='<tr><td colspan="2" class="empty">No random tasks yet</td></tr>';return;}
+  body.innerHTML=state.things.map(t=>`<tr>
+    <td class="${t.done?'done':''}"><span class="hover-info">${esc(t.name)}<span class="tip">${esc(thingInfoTip(t))}</span></span></td>
+    <td class="actions">
+      <button class="icon-btn" title="Complete" onclick="completeThing(${t.id})">✅</button>
+      <button class="icon-btn" title="Edit" onclick="openThing(${t.id})">✏️</button>
+      <button class="icon-btn danger" title="Delete" onclick="askDelete('thing',${t.id})">🗑️</button>
+    </td></tr>`).join('');
+}
+function renderToday(){
+  const t=todayMNL();const body=document.getElementById('todayBody');
+  let rows=[];
+  const ids=activeFilter.size?[...activeFilter]:Object.keys(state.pharmacies);
+  for(const pid of ids){
+    const p=state.pharmacies[pid];if(!p)continue;
+    for(const task of p.tasks){
+      if(!task.done && dueDateMNL(task.due)===t) rows.push({time:mnlToET(task.due),pharm:p.name,name:task.name,pid,tid:task.id});
+    }
+  }
+  body.innerHTML=rows.length?rows.map(r=>`<tr class="today-row" onclick="goToTask('${r.pid}',${r.tid})"><td>${r.time}</td><td>${esc(r.pharm)}</td><td>${esc(r.name)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nothing due today</td></tr>';
+}
+function goToTask(pid,tid){
+  const el=document.getElementById('taskrow-'+pid+'-'+tid);
+  if(!el)return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.add('flash-highlight');
+  setTimeout(()=>el.classList.remove('flash-highlight'),1600);
+}
+function jumpToHistory(tid){
+  openHistory();
+  setTimeout(()=>{
+    const el=document.getElementById('histrow-'+tid);
+    if(!el)return;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.add('flash-highlight');
+    setTimeout(()=>el.classList.remove('flash-highlight'),1600);
+  },60);
+}
+function renderPharmacies(){
+  const wrap=document.getElementById('pharmList');
+  let ids=Object.keys(state.pharmacies);
+  if(activeFilter.size)ids=ids.filter(pid=>activeFilter.has(pid));
+  if(!ids.length){wrap.innerHTML=`<div class="card empty">${activeFilter.size?'No pharmacies match your current filter.':'No pharmacies yet — add a task to create one.'}</div>`;return;}
+  wrap.innerHTML=ids.map(pid=>{
+    const p=state.pharmacies[pid];
+    const sorted=[...p.tasks].sort((a,b)=>(a.done===b.done)?0:(a.done?1:-1));
+    const rows=sorted.length?sorted.map(task=>`
+      <tr id="taskrow-${pid}-${task.id}" class="${task.urgent&&!task.done?'urgent':''} ${task.done?'done':''}">
+        <td class="task-name">${task.link?`<a class="hover-info task-link" href="${esc(task.link)}" target="_blank" rel="noopener">${esc(task.name)} 🔗<span class="tip">${esc(taskInfoTip(task))}</span></a>`:`<span class="hover-info">${esc(task.name)}<span class="tip">${esc(taskInfoTip(task))}</span></span>`}</td>
+        <td>${mnlToET(task.due)}</td>
+        <td>${task.notes?`<span class="note-link">View note<span class="tip">${esc(notesToTip(task.notes))}</span></span>`:'—'}</td>
+        <td><input type="checkbox" ${task.done?'checked':''} onchange="onDoneToggle('${pid}',${task.id},this)"></td>
+        <td class="actions"><button class="icon-btn" title="Edit" onclick="openTask('${pid}',${task.id})">✏️</button><button class="icon-btn danger" title="Delete" onclick="askDelete('task','${pid}:${task.id}')">🗑️</button></td>
+      </tr>`).join(''):'<tr><td colspan="5" class="empty">No tasks</td></tr>';
+    return `<div class="pharm">
+      <div class="pharm-head" style="background:${p.color}">
+        <span>💊 ${esc(p.name)}</span>
+        <span><button class="icon-btn" title="Rename" onclick="renamePharmacy('${pid}')">✏️</button><button class="icon-btn danger" title="Delete pharmacy" onclick="askDelete('pharmacy','${pid}')">🗑️</button></span>
+      </div>
+      <div class="pharm-body"><table><thead><tr><th>Task</th><th style="width:110px">Time (ET)</th><th style="width:80px">Notes</th><th style="width:60px">Done</th><th style="width:80px">Manage</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+  }).join('');
+}
+function openHistory(){
+  const hist=state.thingsHistory||[];
+  const list=document.getElementById('historyList');
+  list.innerHTML = hist.length ? [...hist].reverse().map((t)=>{
+    const tip=`ADDED\n${fmtBoth(t.createdAt)}\n\nDUE\n${t.due?fmtBoth(t.due):'—'}\n\nNOTES\n${notesToTip(t.notes)||'None'}`;
+    const c=colorFor(t.name);
+    return `<div class="hist-row" id="histrow-${t.id}" style="border-left-color:${c};background:color-mix(in srgb, ${c} 8%, var(--card))">
+      <div class="hname" data-tip="${esc(tip)}" onmouseenter="showTip(this,event)" onmousemove="positionTip(event)" onmouseleave="hideTip()">${esc(t.name)}</div>
+      <div><span class="hist-badge" style="background:${c}">✓ ${esc(new Date(t.completedAt).toLocaleString('en-US',{timeZone:'Asia/Manila',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))} MNL</span></div>
+    </div>`;
+  }).join('') : '<p class="empty">No completed random tasks yet.</p>';
+  document.getElementById('historyModalBg').classList.add('show');
+}
+function showTip(el,evt){
+  const tip=document.getElementById('globalTip');
+  tip.textContent=el.getAttribute('data-tip');
+  tip.style.display='block';
+  positionTip(evt);
+}
+function positionTip(evt){
+  const tip=document.getElementById('globalTip');
+  const pad=14;
+  let x=evt.clientX+16, y=evt.clientY+16;
+  const maxX=window.innerWidth-tip.offsetWidth-pad, maxY=window.innerHeight-tip.offsetHeight-pad;
+  if(x>maxX)x=Math.max(pad,maxX);
+  if(y>maxY)y=Math.max(pad,maxY);
+  tip.style.left=x+'px';tip.style.top=y+'px';
+}
+function hideTip(){document.getElementById('globalTip').style.display='none';}
+let pendingRenamePid=null;
+function renamePharmacy(pid){
+  pendingRenamePid=pid;
+  document.getElementById('renameInput').value=state.pharmacies[pid].name;
+  document.getElementById('renameModalBg').classList.add('show');
+}
+function saveRename(){
+  const name=document.getElementById('renameInput').value.trim();
+  if(!name)return notice('Please enter a pharmacy name.');
+  state.pharmacies[pendingRenamePid].name=name;
+  closeModal('renameModalBg');render();
+}
+function notice(msg,title){
+  document.getElementById('noticeTitle').textContent=title||'Heads up';
+  document.getElementById('noticeMsg').textContent=msg;
+  document.getElementById('noticeModalBg').classList.add('show');
+}
+function fillPharmSelect(){
+  const sel=document.getElementById('tPharm');
+  const ids=Object.keys(state.pharmacies);
+  sel.innerHTML=ids.map(id=>`<option value="${id}">${esc(state.pharmacies[id].name)}</option>`).join('')+`<option value="__new__">+ New pharmacy…</option>`;
+}
+function toggleNewPharm(){document.getElementById('newPharmWrap').style.display=document.getElementById('tPharm').value==='__new__'?'block':'none';}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// ---- Task modal ----
+let editingTask=null;
+function openTask(pid,tid){
+  editingTask = pid&&tid? {pid,tid} : null;
+  fillPharmSelect();
+  document.getElementById('taskModalTitle').textContent = editingTask?'Edit Task':'Add Task';
+  if(editingTask){
+    const task=state.pharmacies[pid].tasks.find(t=>t.id===tid);
+    document.getElementById('tPharm').value=pid;
+    document.getElementById('tName').value=task.name;
+    document.getElementById('tDue').value=task.due||'';
+    document.getElementById('tLink').value=task.link||'';
+    document.getElementById('tNotes').value=task.notes||'';
+    document.getElementById('tUrgent').checked=task.urgent;
+  } else {
+    document.getElementById('tName').value='';document.getElementById('tDue').value='';
+    document.getElementById('tLink').value='';
+    document.getElementById('tNotes').value='';document.getElementById('tUrgent').checked=false;
+  }
+  toggleNewPharm();
+  document.getElementById('taskModalBg').classList.add('show');
+}
+function saveTask(){
+  let pid=document.getElementById('tPharm').value;
+  const name=document.getElementById('tName').value.trim();
+  if(!name)return notice('Please enter a task name.');
+  if(pid==='__new__'){
+    const newName=document.getElementById('tNewPharm').value.trim();
+    if(!newName)return notice('Please enter a pharmacy name.');
+    pid='p'+uid();
+    state.pharmacies[pid]={name:newName,tasks:[]};
+  }
+  const due=document.getElementById('tDue').value;
+  const link=document.getElementById('tLink').value.trim();
+  const notes=document.getElementById('tNotes').value;
+  const urgent=document.getElementById('tUrgent').checked;
+  if(editingTask){
+    const task=state.pharmacies[editingTask.pid].tasks.find(t=>t.id===editingTask.tid);
+    task.name=name;task.due=due;task.link=link;task.notes=notes;task.urgent=urgent;
+  } else {
+    state.pharmacies[pid].tasks.push({id:uid(),name,due,link,notes,urgent,done:false,createdAt:new Date().toISOString(),completedAt:null});
+  }
+  closeModal('taskModalBg');render();
+}
+let pendingMonday=null;
+function onDoneToggle(pid,tid,cb){
+  const task=state.pharmacies[pid].tasks.find(t=>t.id===tid);
+  if(cb.checked && !task.done){
+    pendingMonday={pid,tid};
+    document.getElementById('mondayModalBg').classList.add('show');
+  } else {
+    task.done=false;task.completedAt=null;task.mondayNote=null;render();
+  }
+}
+function resolveMonday(choice){
+  const {pid,tid}=pendingMonday;
+  const task=state.pharmacies[pid].tasks.find(t=>t.id===tid);
+  task.done=true;task.completedAt=new Date().toISOString();task.mondayNote=choice;
+  closeModal('mondayModalBg');render();
+}
+
+// ---- Things modal ----
+let editingThing=null;
+function openThing(id){
+  editingThing=id||null;
+  document.getElementById('thingModalTitle').textContent=id?'Edit Random Task':'Add Random Task';
+  const t=id?state.things.find(x=>x.id===id):null;
+  document.getElementById('thName').value=t?t.name:'';
+  document.getElementById('thDue').value=t?(t.due||''):'';
+  document.getElementById('thNotes').value=t?(t.notes||''):'';
+  document.getElementById('thingModalBg').classList.add('show');
+}
+function saveThing(){
+  const name=document.getElementById('thName').value.trim();
+  if(!name)return notice('Please enter a task name.');
+  const due=document.getElementById('thDue').value;
+  const notes=document.getElementById('thNotes').value;
+  if(editingThing){
+    const t=state.things.find(x=>x.id===editingThing);
+    t.name=name;t.due=due;t.notes=notes;
+  } else {
+    state.things.push({id:uid(),name,due,notes,done:false,createdAt:new Date().toISOString()});
+  }
+  closeModal('thingModalBg');render();
+}
+function completeThing(id){
+  const t=state.things.find(x=>x.id===id);
+  state.thingsHistory=state.thingsHistory||[];
+  state.thingsHistory.push({...t,completedAt:new Date().toISOString()});
+  state.things=state.things.filter(x=>x.id!==id);
+  render();
+}
+
+// ---- Delete confirm ----
+let pendingDelete=null;
+function askDelete(type,id){
+  pendingDelete={type,id};
+  const msg={
+    task:'This task will be permanently deleted.',
+    thing:'This random task will be permanently deleted.',
+    pharmacy:'This pharmacy AND all of its tasks (including unfinished ones) will be permanently deleted.'
+  }[type];
+  document.getElementById('delMsg').textContent=msg;
+  document.getElementById('delModalBg').classList.add('show');
+}
+function confirmDelete(){
+  const {type,id}=pendingDelete;
+  if(type==='thing'){state.things=state.things.filter(x=>x.id!==id);}
+  if(type==='pharmacy'){delete state.pharmacies[id];activeFilter.delete(id);}
+  if(type==='task'){const [pid,tid]=id.split(':');state.pharmacies[pid].tasks=state.pharmacies[pid].tasks.filter(t=>t.id!=tid);}
+  closeModal('delModalBg');render();
+}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg){bg.classList.remove('show');render();}}));
+
+load();render();
+checkReminders();
+setInterval(checkReminders,30000);
+
+function playAlertSound(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const beep=(delay)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';o.frequency.value=880;o.connect(g);g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001,ctx.currentTime+delay);
+      g.gain.exponentialRampToValueAtTime(0.3,ctx.currentTime+delay+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+delay+0.3);
+      o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+0.32);
+    };
+    beep(0);beep(0.4);beep(0.8);
+  }catch(e){}
+}
+function checkReminders(){
+  const now=new Date();
+  const mnlHour=parseInt(now.toLocaleString('en-US',{timeZone:'Asia/Manila',hour:'2-digit',hour12:false}));
+  const today=todayMNL();
+  const fire=[];
+  for(const pid in state.pharmacies){
+    const p=state.pharmacies[pid];
+    for(const task of p.tasks){
+      if(task.done||!task.due)continue;
+      const dd=dueDateMNL(task.due);
+      const diffDays=Math.round((new Date(dd)-new Date(today))/86400000);
+      task.remind=task.remind||{};
+      if(diffDays===3&&!task.remind.d3){fire.push(`${p.name} — "${task.name}" is due in 3 days`);task.remind.d3=true;}
+      if(diffDays===1&&!task.remind.d1){fire.push(`${p.name} — "${task.name}" is due tomorrow`);task.remind.d1=true;}
+      if(diffDays===0){
+        if(mnlHour>=0&&!task.remind.due12){fire.push(`${p.name} — "${task.name}" is due TODAY (12 AM check)`);task.remind.due12=true;}
+        if(mnlHour>=3&&!task.remind.due3){fire.push(`${p.name} — "${task.name}" is due TODAY (3 AM check)`);task.remind.due3=true;}
+      }
+    }
+  }
+  if(fire.length){
+    document.getElementById('alertList').innerHTML=fire.map(f=>`<div class="hist-row">${esc(f)}</div>`).join('');
+    document.getElementById('alertModalBg').classList.add('show');
+    playAlertSound();
+    save();
+  }
+}
+
+function exportData(){
+  try{
+    const name='pharmflow-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    const blob=new Blob([JSON.stringify(state)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);
+  }catch(e){notice('Could not save the backup.');}
+}
+function importData(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const s=JSON.parse(r.result);
+      if(!s||typeof s!=='object'||!s.pharmacies||!Array.isArray(s.things))throw new Error('bad');
+      state=s;save();render();notice('Backup restored.','Done');
+    }catch(e){notice('That file is not a valid Pharmflow backup.');}
+    inp.value='';
+  };
+  r.readAsText(f);
+}
+</script>
+</div></body>
+</html>
