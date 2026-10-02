@@ -32,9 +32,15 @@ body{margin:0;background:
 .topgrid{display:grid;grid-template-columns:2.1fr 1fr;gap:18px;margin-bottom:20px;}
 @media(max-width:760px){.topgrid{grid-template-columns:1fr;}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 2px 10px rgba(11,79,108,.05);}
-.dash{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-@media(max-width:520px){.dash{grid-template-columns:repeat(2,1fr);}}
-.stat{border-radius:13px;padding:16px 12px;text-align:center;color:#fff;}
+.dash{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+@media(max-width:640px){.dash{grid-template-columns:repeat(2,1fr);}}
+.stat{border-radius:13px;padding:16px 12px;text-align:center;color:#fff;position:relative;cursor:default;}
+.stat-panel{display:none;position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--card);border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.28);z-index:30;width:230px;max-height:240px;overflow:auto;text-align:left;padding:6px;}
+.stat:hover .stat-panel{display:block;}
+.stat-panel-item{padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--ink);}
+.stat-panel-item:hover{background:var(--bg);}
+.stat-panel-item b{font-size:.82rem;font-weight:600;}
+.stat-panel-empty{padding:8px 10px;color:var(--sub);font-size:.8rem;}
 .stat .ic{font-size:1.2rem;display:block;margin-bottom:4px;}
 .stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.7rem;line-height:1.2;}
 .stat span{font-size:.72rem;opacity:.92;letter-spacing:.02em;}
@@ -46,6 +52,10 @@ th,td{padding:11px 12px;text-align:left;font-size:.88rem;border-bottom:1px solid
 th{color:var(--sub);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
 tbody tr:nth-child(even){background:var(--stripe);}
 tbody tr:hover{background:color-mix(in srgb, var(--teal) 6%, transparent);}
+.today-row{cursor:pointer;}
+@keyframes flashRow{0%{background:rgba(14,156,142,.4);}100%{background:transparent;}}
+.flash-highlight td{animation:flashRow 1.5s ease;}
+.hist-row.flash-highlight{animation:flashRow 1.5s ease;}
 .pharm{margin-bottom:20px;border-radius:16px;border:1px solid var(--line);box-shadow:0 2px 10px rgba(11,79,108,.05);}
 .pharm-head{padding:15px 20px;color:#fff;display:flex;justify-content:space-between;align-items:center;font-family:'Space Grotesk',sans-serif;font-size:1.05rem;border-radius:16px 16px 0 0;}
 .pharm-body{background:var(--card);padding:6px 20px 18px;border-radius:0 0 16px 16px;}
@@ -87,6 +97,9 @@ textarea{min-height:70px;}
 .chk{display:flex;align-items:center;gap:8px;margin-top:12px;}
 .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
 .empty{color:var(--sub);font-size:.85rem;padding:10px 0;}
+.filter-chip{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:.82rem;cursor:pointer;color:var(--ink);transition:all .15s;font-weight:500;}
+.filter-chip:hover{transform:translateY(-1px);}
+.filter-chip.active{color:#fff;font-weight:700;border-color:transparent;}
 </style>
 </head>
 <body><div class="wrap">
@@ -97,7 +110,7 @@ textarea{min-height:70px;}
 
 <div class="topgrid">
   <div class="card">
-    <h2>Dashboard</h2>
+    <h2>Dashboard <span id="dashBadge" style="font-weight:500;font-size:.78rem;color:var(--sub)"></span></h2>
     <div class="dash" id="dash"></div>
   </div>
   <div class="card">
@@ -108,9 +121,33 @@ textarea{min-height:70px;}
 </div>
 
 <div class="card" style="margin-bottom:18px;">
-  <h2>Today's Work</h2>
+  <h2>Today's Work <span id="todayBadge" style="font-weight:500;font-size:.78rem;color:var(--sub)"></span></h2>
   <table><thead><tr><th style="width:90px">Time</th><th style="width:130px">Pharmacy</th><th>Task</th></tr></thead><tbody id="todayBody"></tbody></table>
 </div>
+
+<div class="card" style="margin-bottom:18px;">
+  <h2>🔍 Filter Pharmacies</h2>
+  <input id="pharmSearch" placeholder="Search pharmacy name..." oninput="renderPharmFilterList()">
+  <div id="pharmFilterList" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+  <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <span id="filterStatus" style="font-size:.8rem;color:var(--sub)"></span>
+    <span style="display:flex;gap:8px;">
+      <button class="ghost" onclick="openAddPharmacy()">+ Add pharmacy</button>
+      <button class="ghost" onclick="clearPharmFilter()">Show all</button>
+    </span>
+  </div>
+</div>
+
+<!-- Add Pharmacy only -->
+<div class="modal-bg" id="addPharmModalBg"><div class="modal">
+  <h3>Add Pharmacy</h3>
+  <label>Pharmacy name</label>
+  <input id="addPharmName" placeholder="e.g. MedPlus Alabang">
+  <div class="modal-actions">
+    <button class="ghost" onclick="closeModal('addPharmModalBg')">Cancel</button>
+    <button class="primary" onclick="saveAddPharmacy()">Add pharmacy</button>
+  </div>
+</div></div>
 
 <div class="toolbar">
   <button class="primary" onclick="openTask()">+ Add task</button>
@@ -214,6 +251,53 @@ textarea{min-height:70px;}
 
 <script>
 let state = {pharmacies:{}, things:[], nextId:1};
+let activeFilter=new Set();
+function renderPharmFilterList(){
+  const q=(document.getElementById('pharmSearch').value||'').toLowerCase();
+  const ids=Object.keys(state.pharmacies).filter(pid=>state.pharmacies[pid].name.toLowerCase().includes(q));
+  const wrap=document.getElementById('pharmFilterList');
+  wrap.innerHTML = ids.length ? ids.map(pid=>{
+    const p=state.pharmacies[pid];
+    const active=activeFilter.has(pid);
+    return `<button class="filter-chip ${active?'active':''}" style="${active?`background:${p.color}`:''}" onclick="togglePharmFilter('${pid}')">💊 ${esc(p.name)}</button>`;
+  }).join('') : '<span class="empty">No pharmacies match your search.</span>';
+  updateFilterStatus();
+}
+function togglePharmFilter(pid){
+  if(activeFilter.has(pid))activeFilter.delete(pid);else activeFilter.add(pid);
+  renderPharmFilterList();renderDash();renderToday();renderPharmacies();
+}
+function clearPharmFilter(){
+  activeFilter.clear();
+  document.getElementById('pharmSearch').value='';
+  renderPharmFilterList();renderDash();renderToday();renderPharmacies();
+}
+function updateFilterStatus(){
+  const el=document.getElementById('filterStatus');
+  const badgeD=document.getElementById('dashBadge');
+  const badgeT=document.getElementById('todayBadge');
+  if(!activeFilter.size){
+    el.textContent='Showing all pharmacies';
+    if(badgeD)badgeD.textContent='';if(badgeT)badgeT.textContent='';
+  } else {
+    const names=[...activeFilter].map(pid=>state.pharmacies[pid]?.name).filter(Boolean);
+    el.textContent=`Showing: ${names.join(', ')}`;
+    const tag=`— filtered (${names.length})`;
+    if(badgeD)badgeD.textContent=tag;if(badgeT)badgeT.textContent=tag;
+  }
+}
+function openAddPharmacy(){
+  document.getElementById('addPharmName').value='';
+  document.getElementById('addPharmModalBg').classList.add('show');
+}
+function saveAddPharmacy(){
+  const name=document.getElementById('addPharmName').value.trim();
+  if(!name)return notice('Please enter a pharmacy name.');
+  const pid='p'+uid();
+  state.pharmacies[pid]={name,tasks:[]};
+  closeModal('addPharmModalBg');
+  render();
+}
 function load(){
   try{const s=localStorage.getItem('pharmTaskState');if(s)state=JSON.parse(s);}catch(e){}
 }
@@ -252,30 +336,56 @@ function notesToTip(notes){if(!notes)return '';return notes.split('\n').filter(x
 
 function render(){
   assignPharmColors();
-  renderDash();renderThings();renderToday();renderPharmacies();fillPharmSelect();save();
+  renderDash();renderThings();renderToday();renderPharmacies();fillPharmSelect();renderPharmFilterList();save();
 }
-function renderDash(){
-  let today=0,active=0,completedToday=0,total=0;
+function panelHTML(list){
+  if(!list.length)return '<div class="stat-panel-empty">Nothing here</div>';
+  return list.map(it=>{
+    const onclick = it.type==='pharm' ? `goToTask('${it.pid}',${it.tid})` : `jumpToHistory(${it.tid})`;
+    return `<div class="stat-panel-item" onclick="${onclick}"><b>${esc(it.label)}</b><br><span style="color:var(--sub);font-size:.72rem">${esc(it.sub||'')}</span></div>`;
+  }).join('');
+}
+function buildDashData(){
   const t=todayMNL();
-  for(const pid in state.pharmacies){
-    for(const task of state.pharmacies[pid].tasks){
-      total++;
-      if(!task.done)active++;
-      if(dueDateMNL(task.due)===t && !task.done)today++;
-      if(task.done && task.completedAt && dueDateMNL(task.completedAt)===t)completedToday++;
+  const todayList=[],activeList=[],completedTodayList=[],totalList=[],allCompletedList=[];
+  const ids=activeFilter.size?[...activeFilter]:Object.keys(state.pharmacies);
+  for(const pid of ids){
+    const p=state.pharmacies[pid];if(!p)continue;
+    for(const task of p.tasks){
+      const item={type:'pharm',pid,tid:task.id,label:task.name,sub:p.name};
+      totalList.push(item);
+      if(!task.done){
+        activeList.push(item);
+        if(dueDateMNL(task.due)===t)todayList.push(item);
+      } else {
+        if(task.completedAt && dueDateMNL(task.completedAt)===t)completedTodayList.push(item);
+        allCompletedList.push({...item,when:task.completedAt});
+      }
     }
   }
+  (state.thingsHistory||[]).forEach(h=>{
+    allCompletedList.push({type:'thing-history',tid:h.id,label:h.name,sub:'Random task',when:h.completedAt});
+  });
+  allCompletedList.sort((a,b)=>new Date(b.when||0)-new Date(a.when||0));
+  return {todayList,activeList,completedTodayList,totalList,allCompletedList};
+}
+function renderDash(){
+  const d=buildDashData();
   document.getElementById('dash').innerHTML=`
-    <div class="stat" style="background:#2E86DE"><span class="ic">📅</span><b>${today}</b><span>Today</span></div>
-    <div class="stat" style="background:#E08E1D"><span class="ic">⏳</span><b>${active}</b><span>Active</span></div>
-    <div class="stat" style="background:#12A454"><span class="ic">✅</span><b>${completedToday}</b><span>Completed today</span></div>
-    <div class="stat" style="background:var(--navy)"><span class="ic">📋</span><b>${total}</b><span>Total tasks</span></div>`;
+    <div class="stat" style="background:#2E86DE"><span class="ic">📅</span><b>${d.todayList.length}</b><span>Today</span><div class="stat-panel">${panelHTML(d.todayList)}</div></div>
+    <div class="stat" style="background:#E08E1D"><span class="ic">⏳</span><b>${d.activeList.length}</b><span>Active</span><div class="stat-panel">${panelHTML(d.activeList)}</div></div>
+    <div class="stat" style="background:#12A454"><span class="ic">✅</span><b>${d.completedTodayList.length}</b><span>Completed today</span><div class="stat-panel">${panelHTML(d.completedTodayList)}</div></div>
+    <div class="stat" style="background:var(--navy)"><span class="ic">📋</span><b>${d.totalList.length}</b><span>Total tasks</span><div class="stat-panel">${panelHTML(d.totalList)}</div></div>
+    <div class="stat" style="background:#6C5CE7"><span class="ic">🏁</span><b>${d.allCompletedList.length}</b><span>Completed (all time)</span><div class="stat-panel">${panelHTML(d.allCompletedList)}</div></div>`;
+}
+function thingInfoTip(t){
+  return `ADDED\n${fmtBoth(t.createdAt)}\n\nDUE\n${t.due?fmtBoth(t.due):'—'}\n\nNOTES\n${notesToTip(t.notes)||'None'}`;
 }
 function renderThings(){
   const body=document.getElementById('thingsBody');
   if(!state.things.length){body.innerHTML='<tr><td colspan="2" class="empty">No random tasks yet</td></tr>';return;}
   body.innerHTML=state.things.map(t=>`<tr>
-    <td class="${t.done?'done':''}">${esc(t.name)}</td>
+    <td class="${t.done?'done':''}"><span class="hover-info">${esc(t.name)}<span class="tip">${esc(thingInfoTip(t))}</span></span></td>
     <td class="actions">
       <button class="icon-btn" title="Complete" onclick="completeThing(${t.id})">✅</button>
       <button class="icon-btn" title="Edit" onclick="openThing(${t.id})">✏️</button>
@@ -285,23 +395,42 @@ function renderThings(){
 function renderToday(){
   const t=todayMNL();const body=document.getElementById('todayBody');
   let rows=[];
-  for(const pid in state.pharmacies){
-    const p=state.pharmacies[pid];
+  const ids=activeFilter.size?[...activeFilter]:Object.keys(state.pharmacies);
+  for(const pid of ids){
+    const p=state.pharmacies[pid];if(!p)continue;
     for(const task of p.tasks){
-      if(!task.done && dueDateMNL(task.due)===t) rows.push({time:mnlToET(task.due),pharm:p.name,name:task.name});
+      if(!task.done && dueDateMNL(task.due)===t) rows.push({time:mnlToET(task.due),pharm:p.name,name:task.name,pid,tid:task.id});
     }
   }
-  body.innerHTML=rows.length?rows.map(r=>`<tr><td>${r.time}</td><td>${esc(r.pharm)}</td><td>${esc(r.name)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nothing due today</td></tr>';
+  body.innerHTML=rows.length?rows.map(r=>`<tr class="today-row" onclick="goToTask('${r.pid}',${r.tid})"><td>${r.time}</td><td>${esc(r.pharm)}</td><td>${esc(r.name)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nothing due today</td></tr>';
+}
+function goToTask(pid,tid){
+  const el=document.getElementById('taskrow-'+pid+'-'+tid);
+  if(!el)return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.add('flash-highlight');
+  setTimeout(()=>el.classList.remove('flash-highlight'),1600);
+}
+function jumpToHistory(tid){
+  openHistory();
+  setTimeout(()=>{
+    const el=document.getElementById('histrow-'+tid);
+    if(!el)return;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.add('flash-highlight');
+    setTimeout(()=>el.classList.remove('flash-highlight'),1600);
+  },60);
 }
 function renderPharmacies(){
   const wrap=document.getElementById('pharmList');
-  const ids=Object.keys(state.pharmacies);
-  if(!ids.length){wrap.innerHTML='<div class="card empty">No pharmacies yet — add a task to create one.</div>';return;}
+  let ids=Object.keys(state.pharmacies);
+  if(activeFilter.size)ids=ids.filter(pid=>activeFilter.has(pid));
+  if(!ids.length){wrap.innerHTML=`<div class="card empty">${activeFilter.size?'No pharmacies match your current filter.':'No pharmacies yet — add a task to create one.'}</div>`;return;}
   wrap.innerHTML=ids.map(pid=>{
     const p=state.pharmacies[pid];
     const sorted=[...p.tasks].sort((a,b)=>(a.done===b.done)?0:(a.done?1:-1));
     const rows=sorted.length?sorted.map(task=>`
-      <tr class="${task.urgent&&!task.done?'urgent':''} ${task.done?'done':''}">
+      <tr id="taskrow-${pid}-${task.id}" class="${task.urgent&&!task.done?'urgent':''} ${task.done?'done':''}">
         <td class="task-name">${task.link?`<a class="hover-info task-link" href="${esc(task.link)}" target="_blank" rel="noopener">${esc(task.name)} 🔗<span class="tip">${esc(taskInfoTip(task))}</span></a>`:`<span class="hover-info">${esc(task.name)}<span class="tip">${esc(taskInfoTip(task))}</span></span>`}</td>
         <td>${mnlToET(task.due)}</td>
         <td>${task.notes?`<span class="note-link">View note<span class="tip">${esc(notesToTip(task.notes))}</span></span>`:'—'}</td>
@@ -323,7 +452,7 @@ function openHistory(){
   list.innerHTML = hist.length ? [...hist].reverse().map((t)=>{
     const tip=`ADDED\n${fmtBoth(t.createdAt)}\n\nDUE\n${t.due?fmtBoth(t.due):'—'}\n\nNOTES\n${notesToTip(t.notes)||'None'}`;
     const c=colorFor(t.name);
-    return `<div class="hist-row" style="border-left-color:${c};background:color-mix(in srgb, ${c} 8%, var(--card))">
+    return `<div class="hist-row" id="histrow-${t.id}" style="border-left-color:${c};background:color-mix(in srgb, ${c} 8%, var(--card))">
       <div class="hname" data-tip="${esc(tip)}" onmouseenter="showTip(this,event)" onmousemove="positionTip(event)" onmouseleave="hideTip()">${esc(t.name)}</div>
       <div><span class="hist-badge" style="background:${c}">✓ ${esc(new Date(t.completedAt).toLocaleString('en-US',{timeZone:'Asia/Manila',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))} MNL</span></div>
     </div>`;
@@ -479,7 +608,7 @@ function askDelete(type,id){
 function confirmDelete(){
   const {type,id}=pendingDelete;
   if(type==='thing'){state.things=state.things.filter(x=>x.id!==id);}
-  if(type==='pharmacy'){delete state.pharmacies[id];}
+  if(type==='pharmacy'){delete state.pharmacies[id];activeFilter.delete(id);}
   if(type==='task'){const [pid,tid]=id.split(':');state.pharmacies[pid].tasks=state.pharmacies[pid].tasks.filter(t=>t.id!=tid);}
   closeModal('delModalBg');render();
 }
