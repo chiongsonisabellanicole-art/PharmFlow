@@ -100,6 +100,15 @@ textarea{min-height:70px;}
 .filter-chip{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:.82rem;cursor:pointer;color:var(--ink);transition:all .15s;font-weight:500;}
 .filter-chip:hover{transform:translateY(-1px);}
 .filter-chip.active{color:#fff;font-weight:700;border-color:transparent;}
+.dropdown-wrap{position:relative;}
+.dropdown-toggle{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;}
+.dropdown-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 30px rgba(0,0,0,.18);padding:12px;z-index:25;max-height:300px;overflow:auto;}
+.dropdown-panel.show{display:block;}
+.dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:7px;cursor:pointer;font-size:.88rem;}
+.dropdown-item:hover{background:var(--bg);}
+.dropdown-item input{width:auto;}
+.stat.clickable{cursor:pointer;}
+.stat.active-mode{outline:3px solid #fff;outline-offset:-3px;box-shadow:0 0 0 4px rgba(224,142,29,.4);}
 </style>
 </head>
 <body><div class="wrap">
@@ -127,8 +136,13 @@ textarea{min-height:70px;}
 
 <div class="card" style="margin-bottom:18px;">
   <h2>🔍 Filter Pharmacies</h2>
-  <input id="pharmSearch" placeholder="Search pharmacy name..." oninput="renderPharmFilterList()">
-  <div id="pharmFilterList" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+  <div class="dropdown-wrap" id="filterDropdownWrap">
+    <button type="button" class="ghost dropdown-toggle" onclick="toggleFilterDropdown(event)" id="filterToggleBtn">Select pharmacies ▾</button>
+    <div class="dropdown-panel" id="filterDropdownPanel">
+      <input id="pharmSearch" placeholder="Search pharmacy name..." oninput="renderPharmFilterList()">
+      <div id="pharmFilterList" style="margin-top:8px;"></div>
+    </div>
+  </div>
   <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <span id="filterStatus" style="font-size:.8rem;color:var(--sub)"></span>
     <span style="display:flex;gap:8px;">
@@ -154,6 +168,7 @@ textarea{min-height:70px;}
   <button class="ghost" onclick="document.getElementById('resetModalBg').classList.add('show')">Reset all data</button>
 </div>
 
+<div id="activeOnlyBanner"></div>
 <div id="pharmList"></div>
 
 <!-- Reset Confirm -->
@@ -252,16 +267,26 @@ textarea{min-height:70px;}
 <script>
 let state = {pharmacies:{}, things:[], nextId:1};
 let activeFilter=new Set();
+function toggleFilterDropdown(evt){
+  if(evt)evt.stopPropagation();
+  document.getElementById('filterDropdownPanel').classList.toggle('show');
+}
+document.addEventListener('click',(e)=>{
+  const wrap=document.getElementById('filterDropdownWrap');
+  if(wrap && !wrap.contains(e.target))document.getElementById('filterDropdownPanel').classList.remove('show');
+});
 function renderPharmFilterList(){
   const q=(document.getElementById('pharmSearch').value||'').toLowerCase();
   const ids=Object.keys(state.pharmacies).filter(pid=>state.pharmacies[pid].name.toLowerCase().includes(q));
   const wrap=document.getElementById('pharmFilterList');
   wrap.innerHTML = ids.length ? ids.map(pid=>{
     const p=state.pharmacies[pid];
-    const active=activeFilter.has(pid);
-    return `<button class="filter-chip ${active?'active':''}" style="${active?`background:${p.color}`:''}" onclick="togglePharmFilter('${pid}')">💊 ${esc(p.name)}</button>`;
+    const checked=activeFilter.has(pid);
+    return `<label class="dropdown-item"><input type="checkbox" ${checked?'checked':''} onchange="togglePharmFilter('${pid}')"><span style="color:${p.color};font-weight:700">●</span> ${esc(p.name)}</label>`;
   }).join('') : '<span class="empty">No pharmacies match your search.</span>';
   updateFilterStatus();
+  const btn=document.getElementById('filterToggleBtn');
+  if(btn)btn.textContent = (activeFilter.size===0?'Select pharmacies':activeFilter.size===1?'1 pharmacy selected':`${activeFilter.size} pharmacies selected`)+' ▾';
 }
 function togglePharmFilter(pid){
   if(activeFilter.has(pid))activeFilter.delete(pid);else activeFilter.add(pid);
@@ -336,13 +361,26 @@ function notesToTip(notes){if(!notes)return '';return notes.split('\n').filter(x
 
 function render(){
   assignPharmColors();
-  renderDash();renderThings();renderToday();renderPharmacies();fillPharmSelect();renderPharmFilterList();save();
+  renderDash();renderThings();renderToday();renderPharmacies();fillPharmSelect();renderPharmFilterList();renderActiveOnlyBanner();save();
+}
+function renderActiveOnlyBanner(){
+  const el=document.getElementById('activeOnlyBanner');
+  if(!el)return;
+  el.innerHTML = hideCompleted ? `<div class="card" style="margin-bottom:14px;border-left:4px solid #E08E1D;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <span style="font-size:.85rem;color:var(--sub)">⏳ Showing unfinished tasks only</span>
+    <button class="ghost" onclick="toggleActiveOnlyView()">Show all tasks</button>
+  </div>` : '';
+}
+let hideCompleted=false;
+function toggleActiveOnlyView(){
+  hideCompleted=!hideCompleted;
+  renderDash();renderPharmacies();
 }
 function panelHTML(list){
   if(!list.length)return '<div class="stat-panel-empty">Nothing here</div>';
   return list.map(it=>{
     const onclick = it.type==='pharm' ? `goToTask('${it.pid}',${it.tid})` : `jumpToHistory(${it.tid})`;
-    return `<div class="stat-panel-item" onclick="${onclick}"><b>${esc(it.label)}</b><br><span style="color:var(--sub);font-size:.72rem">${esc(it.sub||'')}</span></div>`;
+    return `<div class="stat-panel-item" onclick="event.stopPropagation();${onclick}"><b>${esc(it.label)}</b><br><span style="color:var(--sub);font-size:.72rem">${esc(it.sub||'')}</span></div>`;
   }).join('');
 }
 function buildDashData(){
@@ -373,7 +411,7 @@ function renderDash(){
   const d=buildDashData();
   document.getElementById('dash').innerHTML=`
     <div class="stat" style="background:#2E86DE"><span class="ic">📅</span><b>${d.todayList.length}</b><span>Today</span><div class="stat-panel">${panelHTML(d.todayList)}</div></div>
-    <div class="stat" style="background:#E08E1D"><span class="ic">⏳</span><b>${d.activeList.length}</b><span>Active</span><div class="stat-panel">${panelHTML(d.activeList)}</div></div>
+    <div class="stat clickable ${hideCompleted?'active-mode':''}" style="background:#E08E1D" onclick="toggleActiveOnlyView()" title="Click to show only unfinished tasks in every pharmacy table"><span class="ic">⏳</span><b>${d.activeList.length}</b><span>Active${hideCompleted?' ✓':''}</span><div class="stat-panel">${panelHTML(d.activeList)}</div></div>
     <div class="stat" style="background:#12A454"><span class="ic">✅</span><b>${d.completedTodayList.length}</b><span>Completed today</span><div class="stat-panel">${panelHTML(d.completedTodayList)}</div></div>
     <div class="stat" style="background:var(--navy)"><span class="ic">📋</span><b>${d.totalList.length}</b><span>Total tasks</span><div class="stat-panel">${panelHTML(d.totalList)}</div></div>
     <div class="stat" style="background:#6C5CE7"><span class="ic">🏁</span><b>${d.allCompletedList.length}</b><span>Completed (all time)</span><div class="stat-panel">${panelHTML(d.allCompletedList)}</div></div>`;
@@ -428,7 +466,8 @@ function renderPharmacies(){
   if(!ids.length){wrap.innerHTML=`<div class="card empty">${activeFilter.size?'No pharmacies match your current filter.':'No pharmacies yet — add a task to create one.'}</div>`;return;}
   wrap.innerHTML=ids.map(pid=>{
     const p=state.pharmacies[pid];
-    const sorted=[...p.tasks].sort((a,b)=>(a.done===b.done)?0:(a.done?1:-1));
+    const base=hideCompleted?p.tasks.filter(t=>!t.done):p.tasks;
+    const sorted=[...base].sort((a,b)=>(a.done===b.done)?0:(a.done?1:-1));
     const rows=sorted.length?sorted.map(task=>`
       <tr id="taskrow-${pid}-${task.id}" class="${task.urgent&&!task.done?'urgent':''} ${task.done?'done':''}">
         <td class="task-name">${task.link?`<a class="hover-info task-link" href="${esc(task.link)}" target="_blank" rel="noopener">${esc(task.name)} 🔗<span class="tip">${esc(taskInfoTip(task))}</span></a>`:`<span class="hover-info">${esc(task.name)}<span class="tip">${esc(taskInfoTip(task))}</span></span>`}</td>
@@ -436,7 +475,7 @@ function renderPharmacies(){
         <td>${task.notes?`<span class="note-link">View note<span class="tip">${esc(notesToTip(task.notes))}</span></span>`:'—'}</td>
         <td><input type="checkbox" ${task.done?'checked':''} onchange="onDoneToggle('${pid}',${task.id},this)"></td>
         <td class="actions"><button class="icon-btn" title="Edit" onclick="openTask('${pid}',${task.id})">✏️</button><button class="icon-btn danger" title="Delete" onclick="askDelete('task','${pid}:${task.id}')">🗑️</button></td>
-      </tr>`).join(''):'<tr><td colspan="5" class="empty">No tasks</td></tr>';
+      </tr>`).join(''):`<tr><td colspan="5" class="empty">${hideCompleted?'No unfinished tasks here right now 🎉':'No tasks'}</td></tr>`;
     return `<div class="pharm">
       <div class="pharm-head" style="background:${p.color}">
         <span>💊 ${esc(p.name)}</span>
