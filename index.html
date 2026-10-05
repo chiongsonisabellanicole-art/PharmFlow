@@ -35,12 +35,15 @@ body{margin:0;background:
 .dash{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
 @media(max-width:640px){.dash{grid-template-columns:repeat(2,1fr);}}
 .stat{border-radius:13px;padding:16px 12px;text-align:center;color:#fff;position:relative;cursor:default;}
-.stat-panel{display:none;position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--card);border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.28);z-index:30;width:230px;max-height:240px;overflow:auto;text-align:left;padding:6px;}
+.stat-panel{display:none;position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);background:var(--card);border-radius:14px;box-shadow:0 16px 34px rgba(0,0,0,.3);z-index:30;width:250px;max-height:280px;overflow:auto;text-align:left;padding:0;border-top:4px solid var(--teal);}
 .stat:hover .stat-panel{display:block;}
-.stat-panel-item{padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--ink);}
+.stat-panel-head{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.82rem;color:var(--ink);padding:12px 14px 10px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;}
+.stat-panel-body{padding:6px;}
+.stat-panel-item{padding:9px 10px;border-radius:9px;cursor:pointer;color:var(--ink);border-bottom:1px solid var(--line);transition:background .12s ease;}
+.stat-panel-item:last-child{border-bottom:none;}
 .stat-panel-item:hover{background:var(--bg);}
-.stat-panel-item b{font-size:.82rem;font-weight:600;}
-.stat-panel-empty{padding:8px 10px;color:var(--sub);font-size:.8rem;}
+.stat-panel-item b{font-size:.84rem;font-weight:600;font-family:'Space Grotesk',sans-serif;}
+.stat-panel-empty{padding:16px 14px;color:var(--sub);font-size:.82rem;text-align:center;}
 .stat .ic{font-size:1.2rem;display:block;margin-bottom:4px;}
 .stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.7rem;line-height:1.2;}
 .stat span{font-size:.72rem;opacity:.92;letter-spacing:.02em;}
@@ -143,6 +146,10 @@ textarea{min-height:70px;}
       <div id="pharmFilterList" style="margin-top:8px;"></div>
     </div>
   </div>
+  <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.85rem;cursor:pointer;color:var(--ink);">
+    <input type="checkbox" id="activeOnlyCheckbox" onchange="toggleActiveOnlyView()" style="width:auto;">
+    ⏳ Only show active (unfinished) tasks
+  </label>
   <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <span id="filterStatus" style="font-size:.8rem;color:var(--sub)"></span>
     <span style="display:flex;gap:8px;">
@@ -389,6 +396,8 @@ function render(){
   renderDash();renderThings();renderToday();renderPharmacies();fillPharmSelect();renderPharmFilterList();renderActiveOnlyBanner();save();
 }
 function renderActiveOnlyBanner(){
+  const cb=document.getElementById('activeOnlyCheckbox');
+  if(cb)cb.checked=hideCompleted;
   const el=document.getElementById('activeOnlyBanner');
   if(!el)return;
   el.innerHTML = hideCompleted ? `<div class="card" style="margin-bottom:14px;border-left:4px solid #E08E1D;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -407,6 +416,19 @@ function panelHTML(list){
     const onclick = it.type==='pharm' ? `goToTask('${it.pid}',${it.tid})` : `jumpToHistory(${it.tid})`;
     return `<div class="stat-panel-item" onclick="event.stopPropagation();${onclick}"><b>${esc(it.label)}</b><br><span style="color:var(--sub);font-size:.72rem">${esc(it.sub||'')}</span></div>`;
   }).join('');
+}
+function statTile(icon,color,count,label,list,opts){
+  opts=opts||{};
+  const cls=`stat ${opts.clickable?'clickable':''} ${opts.activeMode?'active-mode':''}`;
+  const onclick=opts.onclick?` onclick="${opts.onclick}"`:'';
+  const title=opts.title?` title="${esc(opts.title)}"`:'';
+  return `<div class="${cls}" style="background:${color}"${onclick}${title}>
+    <span class="ic">${icon}</span><b>${count}</b><span>${label}</span>
+    <div class="stat-panel" style="border-top-color:${color}">
+      <div class="stat-panel-head">${esc(label)} (${count})</div>
+      <div class="stat-panel-body">${panelHTML(list)}</div>
+    </div>
+  </div>`;
 }
 function buildDashData(){
   const t=todayMNL();
@@ -434,12 +456,12 @@ function buildDashData(){
 }
 function renderDash(){
   const d=buildDashData();
-  document.getElementById('dash').innerHTML=`
-    <div class="stat" style="background:#2E86DE"><span class="ic">📅</span><b>${d.todayList.length}</b><span>Today</span><div class="stat-panel">${panelHTML(d.todayList)}</div></div>
-    <div class="stat clickable ${hideCompleted?'active-mode':''}" style="background:#E08E1D" onclick="toggleActiveOnlyView()" title="Click to show only unfinished tasks in every pharmacy table"><span class="ic">⏳</span><b>${d.activeList.length}</b><span>Active${hideCompleted?' ✓':''}</span><div class="stat-panel">${panelHTML(d.activeList)}</div></div>
-    <div class="stat" style="background:#12A454"><span class="ic">✅</span><b>${d.completedTodayList.length}</b><span>Completed today</span><div class="stat-panel">${panelHTML(d.completedTodayList)}</div></div>
-    <div class="stat" style="background:var(--navy)"><span class="ic">📋</span><b>${d.totalList.length}</b><span>Total tasks</span><div class="stat-panel">${panelHTML(d.totalList)}</div></div>
-    <div class="stat" style="background:#6C5CE7"><span class="ic">🏁</span><b>${d.allCompletedList.length}</b><span>Completed (all time)</span><div class="stat-panel">${panelHTML(d.allCompletedList)}</div></div>`;
+  document.getElementById('dash').innerHTML=
+    statTile('📅','#2E86DE',d.todayList.length,'Today',d.todayList) +
+    statTile('⏳','#E08E1D',d.activeList.length,hideCompleted?'Active ✓':'Active',d.activeList,{clickable:true,activeMode:hideCompleted,onclick:'toggleActiveOnlyView()',title:'Click to show only unfinished tasks in every pharmacy table'}) +
+    statTile('✅','#12A454',d.completedTodayList.length,'Completed today',d.completedTodayList) +
+    statTile('📋','var(--navy)',d.totalList.length,'Total tasks',d.totalList) +
+    statTile('🏁','#6C5CE7',d.allCompletedList.length,'Completed (all time)',d.allCompletedList);
 }
 function thingInfoTip(t){
   return `ADDED\n${fmtBoth(t.createdAt)}\n\nDUE\n${t.due?fmtBoth(t.due):'—'}\n\nNOTES\n${notesToTip(t.notes)||'None'}`;
